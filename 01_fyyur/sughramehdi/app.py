@@ -33,14 +33,14 @@ migrate = Migrate(app, db)
 # Models.
 # ----------------------------------------------------------------------------#
 
-ShowDetails = db.Table('ShowDetails',
+ShowDetails = db.Table('showdetails',
   db.Column('id', db.Integer, autoincrement=True, primary_key=True), 
-  db.Column('venue_id', db.Integer, db.ForeignKey('Venue.id'), primary_key=True), 
-  db.Column('artist_id', db.Integer, db.ForeignKey('Artist.id'), primary_key=True), 
+  db.Column('venue_id', db.Integer, db.ForeignKey('venues.id')), 
+  db.Column('artist_id', db.Integer, db.ForeignKey('artists.id')), 
   db.Column('start_time', db.String, nullable=False))
  
 class Venue(db.Model):
-    __tablename__ = 'Venue'
+    __tablename__ = 'venues'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
@@ -60,7 +60,7 @@ class Venue(db.Model):
 
 
 class Artist(db.Model):
-    __tablename__ = 'Artist'
+    __tablename__ = 'artists'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
@@ -135,7 +135,7 @@ def search_venues():
   searchterm = request.form.get('search_term')
   searchresults = Venue.query.filter(Venue.name.ilike('%' + searchterm + '%')).all()
   response={
-    "count": Venue.query.filter(Venue.name.ilike('%' + searchterm + '%')).count(),
+    "count": len(searchresults),
     "data": [{
       "id": searchresult.id,
       "name": searchresult.name,
@@ -149,8 +149,10 @@ def search_venues():
 def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
-  pastshowdata = db.session.execute(ShowDetails.select().where(ShowDetails.c.venue_id==venue_id).where(ShowDetails.c.start_time < str(datetime.now())))
-  upcomingshowdata = db.session.execute(ShowDetails.select().where(ShowDetails.c.venue_id==venue_id).where(ShowDetails.c.start_time > str(datetime.now())))
+  #pastshowdata = db.session.execute(ShowDetails.select().where(ShowDetails.c.venue_id==venue_id).where(ShowDetails.c.start_time < str(datetime.now())))
+  #upcomingshowdata = db.session.execute(ShowDetails.select().where(ShowDetails.c.venue_id==venue_id).where(ShowDetails.c.start_time > str(datetime.now())))
+  pastshowdata = list(set(db.session.query(ShowDetails).join(Venue, ShowDetails.c.venue_id==venue_id).filter(ShowDetails.c.start_time < str(datetime.now())).all()))
+  upcomingshowdata = list(set(db.session.query(ShowDetails).join(Venue, ShowDetails.c.venue_id==venue_id).filter(ShowDetails.c.start_time > str(datetime.now())).all()))
   venuedata = Venue.query.get(venue_id)
   def convertolist(genres):
     return list(genres.split(' '))
@@ -179,8 +181,8 @@ def show_venue(venue_id):
       "artist_image_link": (Artist.query.filter_by(id=show.artist_id).one()).image_link,
       "start_time": show.start_time
     } for show in upcomingshowdata],
-    "past_shows_count": pastshowdata.rowcount,
-    "num_upcoming_shows": upcomingshowdata.rowcount  
+    "past_shows_count": len(pastshowdata),
+    "upcoming_shows_count": len(upcomingshowdata)  
   }
   return render_template('pages/show_venue.html', venue=data)
 
@@ -272,7 +274,7 @@ def search_artists():
   searchterm = request.form.get('search_term')
   searchresults = Artist.query.filter(Artist.name.ilike('%' + searchterm + '%')).all()
   response={
-    "count": Artist.query.filter(Artist.name.ilike('%' + searchterm + '%')).count(),
+    "count": len(searchresults),
     "data": [{
       "id": searchresult.id,
       "name": searchresult.name,
@@ -285,8 +287,10 @@ def search_artists():
 def show_artist(artist_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
-  pastshowdata = db.session.execute(ShowDetails.select().where(ShowDetails.c.artist_id==artist_id).where(ShowDetails.c.start_time < str(datetime.now())))
-  upcomingshowdata = db.session.execute(ShowDetails.select().where(ShowDetails.c.artist_id==artist_id).where(ShowDetails.c.start_time > str(datetime.now())))
+  #pastshowdata = db.session.execute(ShowDetails.select().where(ShowDetails.c.artist_id==artist_id).where(ShowDetails.c.start_time < str(datetime.now())))
+  #upcomingshowdata = db.session.execute(ShowDetails.select().where(ShowDetails.c.artist_id==artist_id).where(ShowDetails.c.start_time > str(datetime.now())))
+  pastshowdata = list(set(db.session.query(ShowDetails).join(Artist, ShowDetails.c.artist_id==artist_id).filter(ShowDetails.c.start_time < str(datetime.now())).all()))
+  upcomingshowdata = list(set(db.session.query(ShowDetails).join(Artist, ShowDetails.c.artist_id==artist_id).filter(ShowDetails.c.start_time > str(datetime.now())).all()))
   artistdata = Artist.query.get(artist_id)
   def convertolist(genres):
     return list(genres.split(' '))
@@ -314,8 +318,8 @@ def show_artist(artist_id):
       "venue_image_link": (Venue.query.filter_by(id=show.venue_id).one()).image_link,
       "start_time": show.start_time
     } for show in upcomingshowdata],
-    "past_shows_count": pastshowdata.rowcount,
-    "num_upcoming_shows": upcomingshowdata.rowcount
+    "past_shows_count": len(pastshowdata),
+    "upcoming_shows_count": len(upcomingshowdata)
   }
   return render_template('pages/show_artist.html', artist=data)
 
